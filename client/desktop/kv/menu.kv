@@ -1,0 +1,23 @@
+<MenuScreen>
+  name: 'menu'
+  BoxLayout:
+    orientation: 'vertical'
+    padding: 40
+    spacing: 20
+
+    Label:
+      text: 'FAR\nГлавное меню'
+      font_size: 30
+
+    Button:
+      text: 'Начать исследование'
+      on_release: root.go_to_survey()
+
+    Button:
+      text: 'Посмотреть результаты'
+      on_release: root.go_to_results()
+
+    Button:
+      text: 'Настройки'
+      on_release: root.go_to_settings()
+      

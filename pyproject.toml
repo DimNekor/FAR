@@ -1,0 +1,28 @@
+[project]
+name = "far"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+  "aiohttp>=3.13.5",
+  "fastapi>=0.136.1",
+  "kivy>=2.3.1",
+  "numpy>=2.4.4",
+  "pandas>=3.0.2",
+  "pillow>=12.2.0",
+  "postgres>=4.0",
+]
+
+[project.scripts]
+desktop = "client.desktop.main:main"
+server = "server.main:start"
+
+[tool.pyright]
+typpeCheckingMode = "off"
+pythonPath = ".venv/bin/python"
+venvPath = "."
+venv = ".venv"
+
+[tool.setuptools.packages.find]
+include = ["client*", "server*", "static*"]
