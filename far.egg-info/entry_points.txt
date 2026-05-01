@@ -1,3 +1,0 @@
-[console_scripts]
-desktop = client.desktop.main:main
-server = server.main:start
