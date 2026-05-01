@@ -7,6 +7,7 @@ from kivy.uix.screenmanager import ScreenManager
 
 from client.desktop.views.menu_screen import MenuScreen
 from client.desktop.views.survey_screen import SurveyScreen
+from client.desktop.views.results_screen import ResultsScreen
 
 
 class FarApp(App):
@@ -16,7 +17,7 @@ class FarApp(App):
         sm = ScreenManager()
         sm.add_widget(MenuScreen(name="menu"))
         sm.add_widget(SurveyScreen(name="survey"))
-
+        sm.add_widget(ResultsScreen(name="results"))
         return sm
 
 

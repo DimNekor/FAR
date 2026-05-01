@@ -93,3 +93,47 @@ class Database:
         self.conn.commit()
 
         return image_id
+
+    def get_all_results(self):
+        """Получить все результаты, объединяя три таблицы"""
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            SELECT 
+                u.id_user,
+                u.name as participant_name,
+                u.sex,
+                u.created_at as registration_date,
+                s.id_session,
+                s.timing,
+                i.id_image,
+                i.image_name,
+                i.reaction_time,
+                i.true_class,
+                i.predicted_class
+            FROM users u
+            JOIN sessions s ON u.id_user = s.user_id
+            JOIN images i ON s.id_session = i.session_id
+            ORDER BY u.created_at DESC, i.image_name
+        """)
+        return cursor.fetchall()
+
+    def get_statistics(self):
+        """Получить статистику по ответам"""
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            SELECT 
+                u.id_user,
+                u.name,
+                u.sex,
+                s.timing,
+                COUNT(i.id_image) as total_images,
+                SUM(CASE WHEN i.true_class = i.predicted_class THEN 1 ELSE 0 END) as correct_answers,
+                AVG(i.reaction_time) as avg_reaction_time,
+                SUM(CASE WHEN i.predicted_class = -1 THEN 1 ELSE 0 END) as timeouts
+            FROM users u
+            JOIN sessions s ON u.id_user = s.user_id
+            JOIN images i ON s.id_session = i.session_id
+            GROUP BY u.id_user, s.id_session
+            ORDER BY u.created_at DESC
+        """)
+        return cursor.fetchall()

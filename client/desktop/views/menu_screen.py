@@ -197,6 +197,9 @@ class MenuScreen(Screen):
         pass
 
     def update_animation(self, dt):
+        if self.width <= 0 or self.height <= 0:
+            return
+            
         self.time += dt
         t = self.time
 
@@ -206,14 +209,12 @@ class MenuScreen(Screen):
         mx = self.mouse_pos[0] / w if w > 0 else 0.5
         my = self.mouse_pos[1] / h if h > 0 else 0.5
 
-        # Дыхание и плавное движение мозга
         breath = math.sin(t * 0.4) * 0.02
         sway = math.cos(t * 0.3) * 0.01
 
         # Обновляем нейроны
         conn_idx = 0
         for i, neuron in enumerate(self.neurons):
-            # Движение нейронов (дыхание мозга)
             dx = (neuron["base_x"] - 0.5) * breath
             dy = (neuron["base_y"] - 0.5) * breath
             wave_x = math.sin(t * 0.5 + neuron["base_y"] * 5) * 0.01
@@ -241,8 +242,10 @@ class MenuScreen(Screen):
             px = neuron["x"] * w
             py = neuron["y"] * h
 
-            self.neuron_shapes[i].pos = (px - size / 2, py - size / 2)
-            self.neuron_shapes[i].size = (size, size)
+            # Проверка на валидность позиции и размера
+            if size > 0 and w > 0 and h > 0:
+                self.neuron_shapes[i].pos = (px - size / 2, py - size / 2)
+                self.neuron_shapes[i].size = (size, size)
 
             # Цвет нейрона при активации
             base = neuron["color_base"]
@@ -253,7 +256,7 @@ class MenuScreen(Screen):
                 min(1, base[2]),
             )
             self.neuron_colors[i].rgb = color
-            self.neuron_colors[i].a = 0.6 + activation_glow * 0.4
+            self.neuron_colors[i].a = max(0, min(1, 0.6 + activation_glow * 0.4))  # Защита альфа-канала
 
             # Создаем искры при сильной активации
             if neuron["activation"] > 0.6:
@@ -272,52 +275,62 @@ class MenuScreen(Screen):
                     }
                     self.sparks.append(spark)
 
-            # Обновляем связи
             for j in neuron["connections"]:
-                target = self.neurons[j]
+                if j < len(self.neurons): 
+                    target = self.neurons[j]
 
-                # Сигнал по связи
-                signal = (neuron["activation"] + target["activation"]) / 2
-                wave_signal = (math.sin(t * 4 + i * 0.1 + j * 0.1) + 1) / 2
+                    # Сигнал по связи
+                    signal = (neuron["activation"] + target["activation"]) / 2
+                    wave_signal = (math.sin(t * 4 + i * 0.1 + j * 0.1) + 1) / 2
 
-                x1 = neuron["x"] * w
-                y1 = neuron["y"] * h
-                x2 = target["x"] * w
-                y2 = target["y"] * h
+                    x1 = neuron["x"] * w
+                    y1 = neuron["y"] * h
+                    x2 = target["x"] * w
+                    y2 = target["y"] * h
 
-                self.conn_lines[conn_idx].points = [x1, y1, x2, y2]
-                self.conn_colors[conn_idx].a = 0.15 + signal * 0.5 * wave_signal
+                    if conn_idx < len(self.conn_lines):
+                        self.conn_lines[conn_idx].points = [x1, y1, x2, y2]
+                        
+                        new_width = 1 + signal * 2
+                        self.conn_lines[conn_idx].width = max(0.5, new_width)
+                        
+                        # Защита альфа-канала
+                        alpha = max(0, min(1, 0.15 + signal * 0.5 * wave_signal))
+                        self.conn_colors[conn_idx].a = alpha
 
-                # Ширина линии зависит от сигнала
-                self.conn_lines[conn_idx].width = 1 + signal * 2
+                    conn_idx += 1
 
-                conn_idx += 1
-
-        # Обновляем искры
-        for spark in self.sparks[:]:
+        # Обновляем искры с защитой от удаления во время итерации
+        sparks_to_remove = []
+        for spark in self.sparks:
             spark["life"] += dt
             spark["x"] += spark["vx"] * dt
             spark["y"] += spark["vy"] * dt
-            spark["vy"] -= 50 * dt  # Гравитация
+            spark["vy"] -= 50 * dt 
 
             if spark["life"] > spark["max_life"]:
+                sparks_to_remove.append(spark)
+        
+        for spark in sparks_to_remove:
+            if spark in self.sparks:
                 self.sparks.remove(spark)
 
-        # Отрисовываем искры
-        for i in range(40):
+        # Отрисовываем искры 
+        for i in range(min(40, len(self.spark_shapes))):
             if i < len(self.sparks):
                 spark = self.sparks[i]
-                progress = spark["life"] / spark["max_life"]
+                progress = max(0, min(1, spark["life"] / spark["max_life"])) 
                 alpha = 1 - progress
-                size = spark["size"] * (1 - progress * 0.5)
+                size = max(0.1, spark["size"] * (1 - progress * 0.5))
 
-                self.spark_shapes[i].pos = (
-                    spark["x"] - size / 2,
-                    spark["y"] - size / 2,
-                )
-                self.spark_shapes[i].size = (size, size)
+                if size > 0:
+                    self.spark_shapes[i].pos = (
+                        spark["x"] - size / 2,
+                        spark["y"] - size / 2,
+                    )
+                    self.spark_shapes[i].size = (size, size)
                 self.spark_colors[i].rgb = spark["color"]
-                self.spark_colors[i].a = alpha
+                self.spark_colors[i].a = max(0, min(1, alpha)) 
             else:
                 self.spark_colors[i].a = 0
 
@@ -325,7 +338,7 @@ class MenuScreen(Screen):
         self.signal_particles = []
         for neuron in self.neurons:
             for j in neuron["connections"]:
-                if random.random() < 0.05:
+                if j < len(self.neurons) and random.random() < 0.05:
                     target = self.neurons[j]
                     progress = random.random()
                     x = neuron["x"] + (target["x"] - neuron["x"]) * progress
@@ -342,24 +355,31 @@ class MenuScreen(Screen):
                     )
 
         # Обновляем сигнальные частицы
-        for particle in self.signal_particles[:]:
+        particles_to_remove = []
+        for particle in self.signal_particles:
             particle["life"] += dt
             if particle["life"] > particle["max_life"]:
+                particles_to_remove.append(particle)
+        
+        for particle in particles_to_remove:
+            if particle in self.signal_particles:
                 self.signal_particles.remove(particle)
 
-        # Отрисовываем сигнальные частицы
-        for i in range(20):
+        # Отрисовываем сигнальные частицы 
+        for i in range(min(20, len(self.signal_shapes))):
             if i < len(self.signal_particles):
                 particle = self.signal_particles[i]
-                alpha = 1 - (particle["life"] / particle["max_life"])
-                size = particle["size"] * alpha
+                max_life = max(0.001, particle["max_life"])  
+                alpha = 1 - (particle["life"] / max_life)
+                size = max(0.1, particle["size"] * alpha)  
 
-                self.signal_shapes[i].pos = (
-                    particle["x"] - size / 2,
-                    particle["y"] - size / 2,
-                )
-                self.signal_shapes[i].size = (size, size)
-                self.signal_colors[i].rgba = (0.6, 0.9, 1, alpha)
+                if size > 0:
+                    self.signal_shapes[i].pos = (
+                        particle["x"] - size / 2,
+                        particle["y"] - size / 2,
+                    )
+                    self.signal_shapes[i].size = (size, size)
+                self.signal_colors[i].rgba = (0.6, 0.9, 1, max(0, min(1, alpha)))
             else:
                 self.signal_colors[i].a = 0
 
