@@ -3,3 +3,5 @@ static/images/*
 __pycache__/
 *.egg-info
 *.egg
+backup_results/
+research_data.db

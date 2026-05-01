@@ -6,12 +6,16 @@ from kivy.uix.button import Button
 from kivy.uix.image import Image
 from kivy.clock import Clock
 from kivy.core.window import Window
+from kivy.uix.checkbox import CheckBox
+
 from datetime import datetime
 import random
 import os
 import json
+import time
 
 from client.desktop.views import load_view_kv
+from client.desktop.models.database import Database
 
 load_view_kv("survey.kv")
 
@@ -20,14 +24,19 @@ class SurveyScreen(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
+        self.db = Database()
+
         self.state = "id_input"
         self.participant_id = ""
+        self.user_id = None
+        self.session_id = None
         self.images = []
         self.current_image_index = 0
         self.results = []
         self.image_timer = 10
         self.fixation_timer = 3
         self.time_left = 0
+        self.image_start_time = 0
 
         self.layout = BoxLayout(orientation="vertical")
         self.add_widget(self.layout)
@@ -61,6 +70,7 @@ class SurveyScreen(Screen):
         from kivy.uix.floatlayout import FloatLayout
         from kivy.uix.boxlayout import BoxLayout
         from kivy.graphics import Color, Line, Rectangle
+        from kivy.uix.checkbox import CheckBox
 
         float_layout = FloatLayout()
         self.layout.add_widget(float_layout)
@@ -94,17 +104,17 @@ class SurveyScreen(Screen):
             font_size=26,
             bold=True,
             color=(0.1, 0.1, 0.3, 1),
-            size_hint=(1, 0.15),
+            size_hint=(1, 0.12),
             halign="center",
             valign="middle",
         )
         container.add_widget(title)
 
         # Поле ID
-        id_box = BoxLayout(orientation="vertical", size_hint=(1, 0.25), spacing=8)
+        id_box = BoxLayout(orientation="vertical", size_hint=(1, 0.22), spacing=8)
 
         id_label = Label(
-            text="Введите ваш ID (почта, телефон или другой идентификатор):",
+            text="Введите ваш ID (почта, телефон, ФИО или другой идентификатор):",
             font_size=16,
             color=(0, 0, 0, 1),
             size_hint=(1, 0.4),
@@ -115,7 +125,7 @@ class SurveyScreen(Screen):
 
         self.id_input = TextInput(
             text="",
-            font_size=18,
+            font_size=16,
             size_hint=(1, 0.5),
             multiline=False,
             background_color=(1, 1, 1, 1),
@@ -125,12 +135,74 @@ class SurveyScreen(Screen):
         id_box.add_widget(self.id_input)
         container.add_widget(id_box)
 
+        sex_box = BoxLayout(orientation="vertical", size_hint=(1, 0.2), spacing=5)
+
+        sex_label = Label(
+            text="Укажите ваш пол:",
+            font_size=15,
+            color=(0, 0, 0, 1),
+            size_hint=(1, 0.4),
+            halign="left",
+            valign="bottom",
+        )
+        sex_box.add_widget(sex_label)
+
+        # Контейнер для флажков пола
+        sex_checkboxes = BoxLayout(
+            orientation="horizontal", size_hint=(1, 0.5), spacing=30
+        )
+
+        # Флажок Мужской
+        male_box = BoxLayout(orientation="horizontal", spacing=5)
+        self.checkbox_male = CheckBox(
+            group="sex",
+            size_hint=(None, None),
+            size=(40, 40),
+            active=True,  # По умолчанию выбран мужской
+        )
+        male_label = Label(
+            text="Мужской",
+            font_size=16,
+            color=(0, 0, 0, 1),
+            size_hint=(None, None),
+            size=(100, 40),
+            halign="left",
+            valign="middle",
+        )
+        male_box.add_widget(self.checkbox_male)
+        male_box.add_widget(male_label)
+
+        # Флажок Женский
+        female_box = BoxLayout(orientation="horizontal", spacing=5)
+        self.checkbox_female = CheckBox(
+            group="sex",
+            size_hint=(None, None),
+            size=(40, 40),
+            active=False,
+        )
+        female_label = Label(
+            text="Женский",
+            font_size=16,
+            color=(0, 0, 0, 1),
+            size_hint=(None, None),
+            size=(100, 40),
+            halign="left",
+            valign="middle",
+        )
+        female_box.add_widget(self.checkbox_female)
+        female_box.add_widget(female_label)
+
+        sex_checkboxes.add_widget(male_box)
+        sex_checkboxes.add_widget(female_box)
+        sex_box.add_widget(sex_checkboxes)
+        container.add_widget(sex_box)
+
         # Выбор ДО/ПОСЛЕ
         timing_box = BoxLayout(orientation="vertical", size_hint=(1, 0.3), spacing=10)
 
         timing_label = Label(
             text="Укажите, когда проводится опрос:",
-            font_size=16,
+            font_size=15,
             color=(0, 0, 0, 1),
             size_hint=(1, 0.3),
             halign="left",
@@ -191,7 +263,7 @@ class SurveyScreen(Screen):
         submit_btn = Button(
             text="Продолжить",
             font_size=18,
-            size_hint=(0.5, 0.12),
+            size_hint=(0.5, 0.1),
             pos_hint={"center_x": 0.5},
             background_color=(0.3, 0.5, 0.7, 1),
             color=(1, 1, 1, 1),
@@ -203,12 +275,25 @@ class SurveyScreen(Screen):
 
     def _on_id_submit(self, instance):
         self.participant_id = self.id_input.text.strip()
+
+        if hasattr(self, "checkbox_male") and self.checkbox_male.active:
+            self.sex = "male"
+        else:
+            self.sex = "female"
+
         if self.participant_id:
             # Определяем ДО или ПОСЛЕ
             if self.checkbox_before.active:
                 self.timing = "before"
             else:
                 self.timing = "after"
+
+            try:
+                self.user_id = self.db.create_users(self.participant_id, self.sex)
+                self.session_id = self.db.create_session(self.user_id, self.timing)
+            except Exception as e:
+                print(f"Ошибка при создании пользователя/сессии: {e}")
+                return
 
             self._show_instruction()
         else:
@@ -385,6 +470,8 @@ class SurveyScreen(Screen):
         )
         float_layout.add_widget(img)
 
+        self.image_start_time = time.time()
+
         self.time_left = self.image_timer
         self.image_event = Clock.schedule_interval(self._image_timer, 1.0)
 
@@ -393,13 +480,30 @@ class SurveyScreen(Screen):
     def _image_timer(self, dt):
         self.time_left -= 1
         if self.time_left <= 0:
+            image_name = self.images[self.current_image_index]
+            true_class = 1 if "real" in image_name else 0
+
+            try:
+                self.db.add_image(
+                    session_id=self.session_id,
+                    image_name=image_name,
+                    reaction_time=self.image_timer,
+                    true_class=true_class,
+                    predicted_class=-1,
+                )
+            except Exception as e:
+                print(f"Ошибка при сохранении таймаута: {e}")
+
             self.results.append(
                 {
-                    "image": self.images[self.current_image_index],
+                    "image": image_name,
                     "response": "timeout",
                     "time": self.image_timer,
+                    "true_class": true_class,
+                    "predicted_class": -1,
                 }
             )
+            print(self.results)
             self._next_image()
 
     def _on_image_click(self, window, x, y, button, modifiers):
@@ -407,17 +511,37 @@ class SurveyScreen(Screen):
             return
 
         response = None
+        predicted_class = 0
         if button == "left":
             response = "real"
+            predicted_class = 1
         elif button == "right":
             response = "fake"
 
         if response:
+            reaction_time = time.time() - self.image_start_time
+
+            image_name = self.images[self.current_image_index]
+            true_class = 1 if "real" in image_name else 0
+
+            try:
+                self.db.add_image(
+                    session_id=self.session_id,
+                    image_name=image_name,
+                    reaction_time=round(reaction_time, 3),
+                    true_class=true_class,
+                    predicted_class=predicted_class,
+                )
+            except Exception as e:
+                print(f"Ошибка при сохранении результата: {e}")
+
             self.results.append(
                 {
                     "image": self.images[self.current_image_index],
                     "response": response,
-                    "time": self.image_timer - self.time_left,
+                    "time": round(reaction_time, 3),
+                    "true_class": true_class,
+                    "predicted_class": predicted_class,
                 }
             )
             self._next_image()
@@ -453,15 +577,24 @@ class SurveyScreen(Screen):
 
     def _save_results(self):
         results = {
+            "user_id": self.user_id,
+            "session_id": self.session_id,
             "participant_id": self.participant_id,
+            "sex": self.sex,
             "timing": self.timing,
             "date": datetime.now().isoformat(),
             "responses": self.results,
         }
 
-        filename = f"results_{self.participant_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        backup_dir = "backup_results/"
+        if not os.path.exists(backup_dir):
+            os.makedirs(backup_dir)
+
+        filename = f"{backup_dir}results_{self.participant_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
         with open(filename, "w") as f:
             json.dump(results, f, indent=2)
+
+        print(f"Резервная копия сохранена в {filename}")
 
     def _go_to_menu(self, dt):
         if self.manager:
