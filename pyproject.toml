@@ -16,7 +16,7 @@ dependencies = [
 ]
 
 [project.scripts]
-desktop = "client.desktop.main:main"
+desktop = "client.main:main"
 server = "server.main:start"
 
 [tool.pyright]

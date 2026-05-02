@@ -14,8 +14,8 @@ import os
 import json
 import time
 
-from client.desktop.views import load_view_kv
-from client.desktop.models.database import Database
+from client.views import load_view_kv
+from client.models.database import Database
 
 load_view_kv("survey.kv")
 
@@ -48,17 +48,26 @@ class SurveyScreen(Screen):
         image_dir = "static/images/"
         self.images = []
 
+        real_images = []
+        fake_images = []
+
         if os.path.exists(image_dir):
             for filename in os.listdir(image_dir):
                 if filename.endswith((".png", ".jpg", ".jpeg")):
-                    if filename.startswith("fake") or filename.startswith("real"):
-                        self.images.append(os.path.join(image_dir, filename))
+                    if filename.startswith("real"):
+                        real_images.append(os.path.join(image_dir, filename))
+                    elif filename.startswith("fake"):
+                        fake_images.append(os.path.join(image_dir, filename))
 
-        random.shuffle(self.images)
-        real_images = [img for img in self.images if "real" in img][:25]
-        fake_images = [img for img in self.images if "fake" in img][:25]
-        self.images = real_images + fake_images
-        random.shuffle(self.images)
+        if len(real_images) >= 25 and len(fake_images) >= 25:
+            selected_real = random.sample(real_images, 25)
+            selected_fake = random.sample(fake_images, 25)
+
+            self.images = selected_real + selected_fake
+            random.shuffle(self.images)
+
+            self.images = real_images + fake_images
+            random.shuffle(self.images)
 
     def _clear_layout(self):
         self.layout.clear_widgets()

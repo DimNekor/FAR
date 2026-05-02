@@ -6,7 +6,7 @@ from pathlib import Path
 
 class Database:
     def __init__(self):
-        self.db_dir = Path(__file__).parent.parent
+        self.db_dir = Path(__file__).parent
         self.db_path = self.db_dir / "research_data.db"
         self.conn = sqlite3.connect(str(self.db_path))
         self.conn.row_factory = sqlite3.Row
@@ -113,7 +113,6 @@ class Database:
             FROM users u
             JOIN sessions s ON u.id_user = s.user_id
             JOIN images i ON s.id_session = i.session_id
-            ORDER BY u.created_at DESC, i.image_name
         """)
         return cursor.fetchall()
 
@@ -134,6 +133,5 @@ class Database:
             JOIN sessions s ON u.id_user = s.user_id
             JOIN images i ON s.id_session = i.session_id
             GROUP BY u.id_user, s.id_session
-            ORDER BY u.created_at DESC
         """)
         return cursor.fetchall()

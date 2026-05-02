@@ -6,7 +6,7 @@ from kivy.core.window import Window
 import math
 import random
 
-from client.desktop.views import load_view_kv
+from client.views import load_view_kv
 
 load_view_kv("menu.kv")
 
@@ -199,7 +199,7 @@ class MenuScreen(Screen):
     def update_animation(self, dt):
         if self.width <= 0 or self.height <= 0:
             return
-            
+
         self.time += dt
         t = self.time
 
@@ -256,7 +256,9 @@ class MenuScreen(Screen):
                 min(1, base[2]),
             )
             self.neuron_colors[i].rgb = color
-            self.neuron_colors[i].a = max(0, min(1, 0.6 + activation_glow * 0.4))  # Защита альфа-канала
+            self.neuron_colors[i].a = max(
+                0, min(1, 0.6 + activation_glow * 0.4)
+            )  # Защита альфа-канала
 
             # Создаем искры при сильной активации
             if neuron["activation"] > 0.6:
@@ -276,7 +278,7 @@ class MenuScreen(Screen):
                     self.sparks.append(spark)
 
             for j in neuron["connections"]:
-                if j < len(self.neurons): 
+                if j < len(self.neurons):
                     target = self.neurons[j]
 
                     # Сигнал по связи
@@ -290,10 +292,10 @@ class MenuScreen(Screen):
 
                     if conn_idx < len(self.conn_lines):
                         self.conn_lines[conn_idx].points = [x1, y1, x2, y2]
-                        
+
                         new_width = 1 + signal * 2
                         self.conn_lines[conn_idx].width = max(0.5, new_width)
-                        
+
                         # Защита альфа-канала
                         alpha = max(0, min(1, 0.15 + signal * 0.5 * wave_signal))
                         self.conn_colors[conn_idx].a = alpha
@@ -306,20 +308,20 @@ class MenuScreen(Screen):
             spark["life"] += dt
             spark["x"] += spark["vx"] * dt
             spark["y"] += spark["vy"] * dt
-            spark["vy"] -= 50 * dt 
+            spark["vy"] -= 50 * dt
 
             if spark["life"] > spark["max_life"]:
                 sparks_to_remove.append(spark)
-        
+
         for spark in sparks_to_remove:
             if spark in self.sparks:
                 self.sparks.remove(spark)
 
-        # Отрисовываем искры 
+        # Отрисовываем искры
         for i in range(min(40, len(self.spark_shapes))):
             if i < len(self.sparks):
                 spark = self.sparks[i]
-                progress = max(0, min(1, spark["life"] / spark["max_life"])) 
+                progress = max(0, min(1, spark["life"] / spark["max_life"]))
                 alpha = 1 - progress
                 size = max(0.1, spark["size"] * (1 - progress * 0.5))
 
@@ -330,7 +332,7 @@ class MenuScreen(Screen):
                     )
                     self.spark_shapes[i].size = (size, size)
                 self.spark_colors[i].rgb = spark["color"]
-                self.spark_colors[i].a = max(0, min(1, alpha)) 
+                self.spark_colors[i].a = max(0, min(1, alpha))
             else:
                 self.spark_colors[i].a = 0
 
@@ -360,18 +362,18 @@ class MenuScreen(Screen):
             particle["life"] += dt
             if particle["life"] > particle["max_life"]:
                 particles_to_remove.append(particle)
-        
+
         for particle in particles_to_remove:
             if particle in self.signal_particles:
                 self.signal_particles.remove(particle)
 
-        # Отрисовываем сигнальные частицы 
+        # Отрисовываем сигнальные частицы
         for i in range(min(20, len(self.signal_shapes))):
             if i < len(self.signal_particles):
                 particle = self.signal_particles[i]
-                max_life = max(0.001, particle["max_life"])  
+                max_life = max(0.001, particle["max_life"])
                 alpha = 1 - (particle["life"] / max_life)
-                size = max(0.1, particle["size"] * alpha)  
+                size = max(0.1, particle["size"] * alpha)
 
                 if size > 0:
                     self.signal_shapes[i].pos = (
