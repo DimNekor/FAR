@@ -1,0 +1,237 @@
+# client/desktop/views/settings.kv
+
+<SettingsScreen>:
+    main_layout: main_layout
+    
+    BoxLayout:
+        id: main_layout
+        orientation: "vertical"
+        padding: 20
+        spacing: 15
+        
+        # Заголовок
+        BoxLayout:
+            orientation: "vertical"
+            size_hint: (1, 0.15)
+            spacing: 5
+            
+            Label:
+                text: "Настройки"
+                font_size: 32
+                bold: True
+                color: (0.1, 0.1, 0.3, 1)
+                size_hint: (1, 0.6)
+                halign: "center"
+                valign: "middle"
+            
+            # Линия-разделитель
+            BoxLayout:
+                size_hint: (1, 0.02)
+                canvas.before:
+                    Color:
+                        rgba: (0.3, 0.3, 0.3, 0.5)
+                    Line:
+                        points: [self.x + 50, self.y + self.height/2, self.x + self.width - 50, self.y + self.height/2]
+                        width: 1
+        
+        # Контент с настройками
+        BoxLayout:
+            orientation: "vertical"
+            size_hint: (1, 0.75)
+            spacing: 20
+            padding: (30, 20)
+            
+            # Карточка обновлений
+            BoxLayout:
+                orientation: "vertical"
+                size_hint: (1, 0.35)
+                canvas.before:
+                    Color:
+                        rgba: (0.95, 0.95, 0.98, 1)
+                    Rectangle:
+                        pos: self.pos
+                        size: self.size
+                    Color:
+                        rgba: (0.3, 0.3, 0.5, 0.3)
+                    Line:
+                        rectangle: [self.x, self.y, self.width, self.height]
+                        width: 1.5
+                
+                padding: 15
+                spacing: 10
+                
+                Label:
+                    text: "Обновление приложения"
+                    font_size: 20
+                    bold: True
+                    color: (0.1, 0.1, 0.3, 1)
+                    size_hint: (1, 0.25)
+                    halign: "left"
+                    valign: "middle"
+                
+                Label:
+                    text: "Проверить наличие обновлений и установить последнюю версию"
+                    font_size: 14
+                    color: (0.3, 0.3, 0.3, 1)
+                    size_hint: (1, 0.35)
+                    halign: "left"
+                    valign: "top"
+                    text_size: self.width, None
+                
+                BoxLayout:
+                    orientation: "horizontal"
+                    size_hint: (1, 0.4)
+                    spacing: 10
+                    
+                    Button:
+                        text: "Проверить обновления"
+                        font_size: 16
+                        size_hint: (0.4, 1)
+                        background_color: (0.3, 0.5, 0.7, 1)
+                        color: (1, 1, 1, 1)
+                        on_release: root.check_updates()
+                        
+                    Button:
+                        text: "Обновить сейчас"
+                        font_size: 16
+                        size_hint: (0.4, 1)
+                        background_color: (0.2, 0.7, 0.3, 1)
+                        color: (1, 1, 1, 1)
+                        on_release: root.update_app()
+            
+            # Карточка синхронизации БД
+            BoxLayout:
+                orientation: "vertical"
+                size_hint: (1, 0.35)
+                canvas.before:
+                    Color:
+                        rgba: (0.95, 0.95, 0.98, 1)
+                    Rectangle:
+                        pos: self.pos
+                        size: self.size
+                    Color:
+                        rgba: (0.3, 0.3, 0.5, 0.3)
+                    Line:
+                        rectangle: [self.x, self.y, self.width, self.height]
+                        width: 1.5
+                
+                padding: 15
+                spacing: 10
+                
+                Label:
+                    text: "Синхронизация базы данных"
+                    font_size: 20
+                    bold: True
+                    color: (0.1, 0.1, 0.3, 1)
+                    size_hint: (1, 0.25)
+                    halign: "left"
+                    valign: "middle"
+                
+                Label:
+                    text: "Синхронизировать локальную базу данных с удаленным сервером"
+                    font_size: 14
+                    color: (0.3, 0.3, 0.3, 1)
+                    size_hint: (1, 0.35)
+                    halign: "left"
+                    valign: "top"
+                    text_size: self.width, None
+                
+                BoxLayout:
+                    orientation: "horizontal"
+                    size_hint: (1, 0.4)
+                    spacing: 10
+                    
+                    Button:
+                        text: "Экспорт БД"
+                        font_size: 16
+                        size_hint: (0.4, 1)
+                        background_color: (0.6, 0.4, 0.2, 1)
+                        color: (1, 1, 1, 1)
+                        on_release: root.export_database()
+                        
+                    Button:
+                        text: "Синхронизировать"
+                        font_size: 16
+                        size_hint: (0.4, 1)
+                        background_color: (0.2, 0.7, 0.3, 1)
+                        color: (1, 1, 1, 1)
+                        on_release: root.sync_database()
+            
+            # Информация о версии и статусе
+            BoxLayout:
+                orientation: "horizontal"
+                size_hint: (1, 0.15)
+                spacing: 20
+                
+                BoxLayout:
+                    orientation: "vertical"
+                    size_hint: (0.5, 1)
+                    spacing: 3
+                    
+                    Label:
+                        text: "Текущая версия:"
+                        font_size: 13
+                        color: (0.4, 0.4, 0.4, 1)
+                        size_hint: (1, 0.5)
+                        halign: "left"
+                        valign: "bottom"
+                    
+                    Label:
+                        text: "1.0.0"
+                        font_size: 15
+                        bold: True
+                        color: (0.2, 0.2, 0.5, 1)
+                        size_hint: (1, 0.5)
+                        halign: "left"
+                        valign: "top"
+                
+                BoxLayout:
+                    orientation: "vertical"
+                    size_hint: (0.5, 1)
+                    spacing: 3
+                    
+                    Label:
+                        text: "Статус подключения:"
+                        font_size: 13
+                        color: (0.4, 0.4, 0.4, 1)
+                        size_hint: (1, 0.5)
+                        halign: "right"
+                        valign: "bottom"
+                    
+                    Label:
+                        id: connection_status
+                        text: "Не подключено"
+                        font_size: 15
+                        bold: True
+                        color: (0.8, 0.3, 0.3, 1)
+                        size_hint: (1, 0.5)
+                        halign: "right"
+                        valign: "top"
+        
+        # Нижняя панель с версией и кнопкой назад
+        BoxLayout:
+            orientation: "horizontal"
+            size_hint: (1, 0.1)
+            spacing: 10
+            padding: (10, 5)
+            
+            Button:
+                text: "Назад"
+                font_size: 16
+                size_hint: (0.2, 1)
+                background_color: (0.7, 0.3, 0.3, 1)
+                color: (1, 1, 1, 1)
+                on_release: root.go_to_menu()
+            
+            # Пустое пространство
+            BoxLayout:
+                size_hint: (0.6, 1)
+            
+            Label:
+                text: "Version 1.0.0"
+                font_size: 14
+                color: (0.4, 0.4, 0.4, 1)
+                size_hint: (0.2, 1)
+                halign: "right"
+                valign: "middle"
+                padding: (0, 0, 10, 0)
