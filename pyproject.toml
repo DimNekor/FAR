@@ -13,11 +13,13 @@ dependencies = [
   "pandas>=3.0.2",
   "pillow>=12.2.0",
   "postgres>=4.0",
+  "pydantic-settings>=2.14.0",
+  "uvicorn>=0.46.0",
 ]
 
 [project.scripts]
 desktop = "client.main:main"
-server = "server.main:start"
+server = "server.run:start"
 
 [tool.pyright]
 typpeCheckingMode = "off"

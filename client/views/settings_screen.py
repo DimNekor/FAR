@@ -21,7 +21,7 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-# from api.client import APIClient, UpdateInfo, SyncResult
+from client.api.client import APIClient
 
 from client.views import load_view_kv
 
@@ -35,18 +35,13 @@ class SettingsScreen(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        # Инициализация API клиента
-        config_path = Path(__file__).parent.parent / "config.json"
-        # self.api = APIClient(config_path)
-        self.api = None
-        # Пути
+        self.api = APIClient()
+
         self.db_path = Path(__file__).parent / "research_data.db"
         self.backup_dir = Path(__file__).parent.parent / "backups"
 
-        # Создаем директорию для бэкапов
         self.backup_dir.mkdir(exist_ok=True)
 
-        # Флаг для предотвращения повторных проверок
         self._checking = False
 
     def on_enter(self):
