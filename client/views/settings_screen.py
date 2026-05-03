@@ -460,38 +460,48 @@ class SettingsScreen(Screen):
         close_btn.bind(on_release=on_cancel)
 
         def sync():
-            result = self.api.sync_database()
+            # 1. Синхронизация БД
+            result_db = self.api.sync_database()
+
+            # 2. Синхронизация изображений
+            result_img = self.api.sync_images()
 
             def show_result(dt):
                 progress.value = 100
 
-                if result.get("success"):
-                    sent = result.get("sent_to_server", {})
-                    received = result.get("saved_from_server", {})
-
-                    status_label.text = "Синхронизация завершена!"
-                    detail_text = (
-                        f"Отправлено на сервер:\n"
-                        f"  Пользователей: {sent.get('saved_users', 0)}\n"
-                        f"  Сессий: {sent.get('saved_sessions', 0)}\n"
-                        f"  Ответов: {sent.get('saved_images', 0)}\n\n"
-                        f"Получено с сервера:\n"
-                        f"  Пользователей: {received.get('saved_users', 0)}\n"
-                        f"  Сессий: {received.get('saved_sessions', 0)}\n"
-                        f"  Ответов: {received.get('saved_images', 0)}"
+                # Результаты БД
+                if result_db.get("success"):
+                    sent = result_db.get("sent_to_server", {})
+                    received = result_db.get("saved_from_server", {})
+                    db_text = (
+                        f"База данных:\n"
+                        f"  Отправлено: пользователей {sent.get('saved_users', 0)}, "
+                        f"сессий {sent.get('saved_sessions', 0)}, "
+                        f"ответов {sent.get('saved_images', 0)}\n"
+                        f"  Получено: пользователей {received.get('saved_users', 0)}, "
+                        f"сессий {received.get('saved_sessions', 0)}, "
+                        f"ответов {received.get('saved_images', 0)}"
                     )
-                    close_btn.background_color = (0.2, 0.7, 0.3, 1)
                 else:
-                    status_label.text = "Ошибка синхронизации"
-                    detail_text = result.get("message", "Неизвестная ошибка")
-                    close_btn.background_color = (0.8, 0.3, 0.3, 1)
+                    db_text = f"БД: {result_db.get('message', 'Ошибка')}"
 
-                detail_label.text = detail_text
+                # Результаты изображений
+                if result_img.get("success"):
+                    img_text = (
+                        f"\n\nИзображения:\n"
+                        f"  Скачано: {result_img.get('downloaded', 0)}\n"
+                        f"  Загружено: {result_img.get('uploaded', 0)}"
+                    )
+                else:
+                    img_text = f"\n\nИзображения: {result_img.get('message', 'Ошибка')}"
+
+                status_label.text = "Синхронизация завершена!"
+                detail_label.text = db_text + img_text
+                close_btn.background_color = (0.2, 0.7, 0.3, 1)
                 close_btn.text = "Закрыть"
                 close_btn.unbind(on_release=on_cancel)
                 close_btn.bind(on_release=on_complete)
 
-            # Вот это было не на месте — теперь внутри sync()
             Clock.schedule_once(show_result, 0)
 
         popup.open()
@@ -533,3 +543,23 @@ class SettingsScreen(Screen):
         self.api.close()  # Закрываем сессию API
         if self.manager:
             self.manager.current = "menu"
+
+    def sync_images(self):
+        """Синхронизация изображений"""
+
+        def do_sync():
+            result = self.api.sync_images()
+
+            def show(dt):
+                if result.get("success"):
+                    self._show_popup(
+                        "Синхронизация изображений",
+                        f"Скачано: {result.get('downloaded', 0)}\n"
+                        f"Загружено: {result.get('uploaded', 0)}",
+                    )
+                else:
+                    self._show_popup("Ошибка", result.get("message", ""))
+
+            Clock.schedule_once(show, 0)
+
+        threading.Thread(target=do_sync, daemon=True).start()

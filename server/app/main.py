@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from server.app.core.config import settings
 from server.app.core.database import engine, Base
-from server.app.api.v1.endpoints import health, sync
+from server.app.api.v1.endpoints import health, sync, sync_images
 
 import server.app.models
 
@@ -13,6 +13,11 @@ import server.app.models
 async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+        from server.app.services.image_sync_service import ImageSyncService
+
+        service = ImageSyncService()
+        service.save_metadata()
     yield
 
 
@@ -34,6 +39,7 @@ app.add_middleware(
 # Подключаем роутеры
 app.include_router(health.router, prefix="/api/v1", tags=["health"])
 app.include_router(sync.router, prefix="/api/v1", tags=["sync"])
+app.include_router(sync_images.router, prefix="/api/v1", tags=["sync-images"])
 
 
 @app.get("/")

@@ -1,6 +1,7 @@
 import asyncio
 import requests
 import aiohttp
+from datetime import datetime
 from client.utils.config import config
 
 
@@ -69,6 +70,80 @@ class APIClient:
                 return {"success": False, "message": f"HTTP {resp.status_code}"}
         except requests.ConnectionError:
             return {"success": False, "message": "Сервер недоступен"}
+        except Exception as e:
+            return {"success": False, "message": str(e)}
+
+    def sync_images(self) -> dict:
+        """
+        Синхронизация изображений с сервером.
+        """
+        from client.models.database import Database
+        import os
+        from pathlib import Path
+
+        # Получаем список локальных файлов с датами
+        images_dir = Path(__file__).parent.parent.parent / "static" / "images"
+        local_files = {}
+
+        if images_dir.exists():
+            for filepath in images_dir.iterdir():
+                if filepath.is_file() and filepath.suffix.lower() in (
+                    ".png",
+                    ".jpg",
+                    ".jpeg",
+                ):
+                    mtime = datetime.fromtimestamp(filepath.stat().st_mtime)
+                    local_files[filepath.name] = mtime.isoformat()
+
+        try:
+            # Шаг 1: Сравниваем списки
+            resp = requests.post(
+                f"{self.base_url}/api/v1/sync-images/compare",
+                json=local_files,
+                timeout=30,
+            )
+            if resp.status_code != 200:
+                return {"success": False, "message": f"HTTP {resp.status_code}"}
+
+            result = resp.json()
+            client_needs = result.get("client_needs", [])
+            server_needs = result.get("server_needs", [])
+
+            downloaded = 0
+            uploaded = 0
+
+            # Шаг 2: Скачиваем файлы, которых нет у клиента
+            for filename in client_needs:
+                resp = requests.get(
+                    f"{self.base_url}/api/v1/sync-images/download/{filename}",
+                    timeout=60,
+                )
+                if resp.status_code == 200:
+                    filepath = images_dir / filename
+                    with open(filepath, "wb") as f:
+                        f.write(resp.content)
+                    downloaded += 1
+
+            # Шаг 3: Загружаем файлы, которых нет у сервера
+            for filename in server_needs:
+                filepath = images_dir / filename
+                if filepath.exists():
+                    with open(filepath, "rb") as f:
+                        files = {"file": (filename, f, "image/png")}
+                        resp = requests.post(
+                            f"{self.base_url}/api/v1/sync-images/upload/{filename}",
+                            files=files,
+                            timeout=60,
+                        )
+                        if resp.status_code == 200:
+                            uploaded += 1
+
+            return {
+                "success": True,
+                "downloaded": downloaded,
+                "uploaded": uploaded,
+            }
+
         except Exception as e:
             return {"success": False, "message": str(e)}
 

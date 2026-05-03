@@ -1,4 +1,5 @@
-static/images/*
+client/static/images/*
+server/static/images/*
 .venv
 __pycache__/
 *.egg-info

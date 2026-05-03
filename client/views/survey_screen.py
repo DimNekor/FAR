@@ -45,7 +45,7 @@ class SurveyScreen(Screen):
         self._show_id_input()
 
     def _load_images(self):
-        image_dir = "static/images/"
+        image_dir = "client/static/images/"
         self.images = []
 
         real_images = []
