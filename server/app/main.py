@@ -1,10 +1,12 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi import Depends
 
 from server.app.core.config import settings
 from server.app.core.database import engine, Base
 from server.app.api.v1.endpoints import health, sync, sync_images
+from server.app.core.security import verify_api_key
 
 import server.app.models
 
@@ -25,6 +27,7 @@ app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
     lifespan=lifespan,
+    dependencies=[Depends(verify_api_key)],
 )
 
 # CORS для разработки

@@ -21,17 +21,20 @@ class Config:
                 base = Path.home() / ".config"
             return base / app_name
         else:
-            return Path(__file__).parent / "config"
+            return Path(__file__).parent
 
     def _load(self):
         config_dir = self._get_config_dir()
         config_dir.mkdir(parents=True, exist_ok=True)
 
         user_config = config_dir / "config.json"
-        default_config = Path(__file__).parent / "config" / "default_config.json"
-
+        default_config = (
+            Path(__file__).parent.parent.parent / "config" / "default_config.json"
+        )
+        print(default_config)
         if not user_config.exists():
             if default_config.exists():
+                print("Here")
                 with open(default_config, "r", encoding="utf-8") as f:
                     self._config = json.load(f)
                 with open(user_config, "w", encoding="utf-8") as f:
@@ -49,6 +52,15 @@ class Config:
     @server_url.setter
     def server_url(self, value):
         self._config["server_url"] = value
+        self._save()
+
+    @property
+    def api_key(self):
+        return self._config.get("api_key", "")
+
+    @api_key.setter
+    def api_key(self, value):
+        self._config["api_key"] = value
         self._save()
 
     def _save(self):

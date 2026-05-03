@@ -2,13 +2,16 @@ import asyncio
 import requests
 import aiohttp
 from datetime import datetime
-from client.utils.config import config
+from client.utils.config.config import config
 
 
 class APIClient:
     def __init__(self):
         self.base_url = config.server_url.rstrip("/")
         self._session = None
+
+    def _headers(self):
+        return {"X-API-Key": config.api_key}
 
     async def _get_session(self):
         if self._session is None or self._session.closed:
@@ -19,8 +22,11 @@ class APIClient:
     async def _check_health_async(self):
         """Проверка доступности сервера"""
         session = await self._get_session()
+        print(f"DEBUG: Sending health check with key: '{config.api_key}'")
         try:
-            async with session.get(f"{self.base_url}/api/v1/health") as resp:
+            async with session.get(
+                f"{self.base_url}/api/v1/health", headers={"X-API-Key": config.api_key}
+            ) as resp:
                 if resp.status == 200:
                     data = await resp.json()
                     return True, data.get("version", "unknown")
@@ -52,6 +58,7 @@ class APIClient:
             resp = requests.post(
                 f"{self.base_url}/api/v1/sync",
                 json=local_data,
+                headers=self._headers(),
                 timeout=30,
             )
             if resp.status_code == 200:
@@ -82,7 +89,7 @@ class APIClient:
         from pathlib import Path
 
         # Получаем список локальных файлов с датами
-        images_dir = Path(__file__).parent.parent.parent / "static" / "images"
+        images_dir = Path(__file__).parent.parent / "static" / "images"
         local_files = {}
 
         if images_dir.exists():
@@ -100,6 +107,7 @@ class APIClient:
             resp = requests.post(
                 f"{self.base_url}/api/v1/sync-images/compare",
                 json=local_files,
+                headers=self._headers(),
                 timeout=30,
             )
             if resp.status_code != 200:
@@ -116,6 +124,7 @@ class APIClient:
             for filename in client_needs:
                 resp = requests.get(
                     f"{self.base_url}/api/v1/sync-images/download/{filename}",
+                    headers=self._headers(),
                     timeout=60,
                 )
                 if resp.status_code == 200:
@@ -133,6 +142,7 @@ class APIClient:
                         resp = requests.post(
                             f"{self.base_url}/api/v1/sync-images/upload/{filename}",
                             files=files,
+                            headers=self._headers(),
                             timeout=60,
                         )
                         if resp.status_code == 200:
