@@ -135,3 +135,85 @@ class Database:
             GROUP BY u.id_user, s.id_session
         """)
         return cursor.fetchall()
+
+    def get_all_data_for_sync(self):
+        """Собрать все данные для отправки на сервер."""
+        cursor = self.conn.cursor()
+
+        cursor.execute("SELECT * FROM users")
+        users = [dict(row) for row in cursor.fetchall()]
+
+        cursor.execute("SELECT * FROM sessions")
+        sessions = [dict(row) for row in cursor.fetchall()]
+
+        cursor.execute("SELECT * FROM images")
+        images = [dict(row) for row in cursor.fetchall()]
+
+        return {
+            "users": users,
+            "sessions": sessions,
+            "images": images,
+        }
+
+    def save_synced_data(self, server_data: dict) -> dict:
+        """Сохранить данные с сервера, которых нет локально.
+        Возвращает статистику."""
+        cursor = self.conn.cursor()
+        saved_users = 0
+        saved_sessions = 0
+        saved_images = 0
+
+        # Пользователи
+        for user in server_data.get("users", []):
+            cursor.execute(
+                "SELECT id_user FROM users WHERE id_user = ?", (user["id_user"],)
+            )
+            if not cursor.fetchone():
+                cursor.execute(
+                    "INSERT INTO users (id_user, name, sex, created_at) VALUES (?, ?, ?, ?)",
+                    (user["id_user"], user["name"], user["sex"], user["created_at"]),
+                )
+                saved_users += 1
+
+        # Сессии
+        for session in server_data.get("sessions", []):
+            cursor.execute(
+                "SELECT id_session FROM sessions WHERE id_session = ?",
+                (session["id_session"],),
+            )
+            if not cursor.fetchone():
+                cursor.execute(
+                    "INSERT INTO sessions (id_session, user_id, timing) VALUES (?, ?, ?)",
+                    (session["id_session"], session["user_id"], session["timing"]),
+                )
+                saved_sessions += 1
+
+        # Изображения
+        for image in server_data.get("images", []):
+            cursor.execute(
+                "SELECT id_image FROM images WHERE id_image = ?",
+                (image["id_image"],),
+            )
+            if not cursor.fetchone():
+                cursor.execute(
+                    """INSERT INTO images
+                    (id_image, session_id, image_name, reaction_time, true_class, predicted_class)
+                    VALUES (?, ?, ?, ?, ?, ?)""",
+                    (
+                        image["id_image"],
+                        image["session_id"],
+                        image["image_name"],
+                        image["reaction_time"],
+                        image["true_class"],
+                        image["predicted_class"],
+                    ),
+                )
+                saved_images += 1
+
+        self.conn.commit()
+
+        return {
+            "saved_users": saved_users,
+            "saved_sessions": saved_sessions,
+            "saved_images": saved_images,
+        }

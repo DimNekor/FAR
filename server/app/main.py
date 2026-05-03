@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from server.app.core.config import settings
 from server.app.core.database import engine, Base
-from server.app.api.v1.endpoints import health
+from server.app.api.v1.endpoints import health, sync
 
 import server.app.models
 
@@ -33,6 +33,7 @@ app.add_middleware(
 
 # Подключаем роутеры
 app.include_router(health.router, prefix="/api/v1", tags=["health"])
+app.include_router(sync.router, prefix="/api/v1", tags=["sync"])
 
 
 @app.get("/")

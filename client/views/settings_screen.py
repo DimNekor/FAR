@@ -416,9 +416,6 @@ class SettingsScreen(Screen):
 
     def sync_database(self):
         """Синхронизация базы данных с VPS"""
-        # Создаем бэкап перед синхронизацией
-        if self.api.config.get("backup_before_sync", True):
-            self._create_backup()
 
         content = BoxLayout(orientation="vertical", spacing=15, padding=20)
 
@@ -454,10 +451,7 @@ class SettingsScreen(Screen):
             auto_dismiss=False,
         )
 
-        cancel_flag = {"cancel": False}
-
         def on_cancel(instance):
-            cancel_flag["cancel"] = True
             popup.dismiss()
 
         def on_complete(instance):
@@ -466,58 +460,30 @@ class SettingsScreen(Screen):
         close_btn.bind(on_release=on_cancel)
 
         def sync():
-            def progress_callback(percent, message):
-                if not cancel_flag["cancel"]:
-                    Clock.schedule_once(
-                        lambda dt, p=percent: setattr(progress, "value", p), 0
-                    )
-                    Clock.schedule_once(
-                        lambda dt, m=message: setattr(status_label, "text", m), 0
-                    )
+            result = self.api.sync_database()
 
-            def detail_callback(message):
-                if not cancel_flag["cancel"]:
-                    Clock.schedule_once(
-                        lambda dt, m=message: setattr(detail_label, "text", m), 0
-                    )
-
-            # Шаг 1: Проверка подключения
-            progress_callback(10, "Проверка подключения к серверу...")
-            detail_callback("Установка соединения...")
-
-            is_available, message = self.api.check_health()
-
-            if not is_available:
-
-                def show_error(dt):
-                    status_label.text = "Ошибка подключения"
-                    detail_label.text = message
-                    close_btn.text = "Закрыть"
-                    close_btn.unbind(on_release=on_cancel)
-                    close_btn.bind(on_release=on_complete)
-
-                Clock.schedule_once(show_error, 0)
-                return
-
-            # Шаг 2: Синхронизация
-            detail_callback("Синхронизация данных...")
-
-            result = self.api.sync_database(self.db_path, progress_callback)
-
-            # Шаг 3: Результат
             def show_result(dt):
                 progress.value = 100
 
-                if result.success:
+                if result.get("success"):
+                    sent = result.get("sent_to_server", {})
+                    received = result.get("saved_from_server", {})
+
                     status_label.text = "Синхронизация завершена!"
                     detail_text = (
-                        f"Отправлено записей: {result.records_sent}\n"
-                        f"Получено записей: {result.records_received}"
+                        f"Отправлено на сервер:\n"
+                        f"  Пользователей: {sent.get('saved_users', 0)}\n"
+                        f"  Сессий: {sent.get('saved_sessions', 0)}\n"
+                        f"  Ответов: {sent.get('saved_images', 0)}\n\n"
+                        f"Получено с сервера:\n"
+                        f"  Пользователей: {received.get('saved_users', 0)}\n"
+                        f"  Сессий: {received.get('saved_sessions', 0)}\n"
+                        f"  Ответов: {received.get('saved_images', 0)}"
                     )
                     close_btn.background_color = (0.2, 0.7, 0.3, 1)
                 else:
                     status_label.text = "Ошибка синхронизации"
-                    detail_text = result.message
+                    detail_text = result.get("message", "Неизвестная ошибка")
                     close_btn.background_color = (0.8, 0.3, 0.3, 1)
 
                 detail_label.text = detail_text
@@ -525,6 +491,7 @@ class SettingsScreen(Screen):
                 close_btn.unbind(on_release=on_cancel)
                 close_btn.bind(on_release=on_complete)
 
+            # Вот это было не на месте — теперь внутри sync()
             Clock.schedule_once(show_result, 0)
 
         popup.open()
