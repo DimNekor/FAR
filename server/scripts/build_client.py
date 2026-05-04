@@ -1,6 +1,7 @@
 import subprocess
 import sys
 from pathlib import Path
+import zipfile
 
 
 def build(platform: str, version: str):
@@ -54,11 +55,8 @@ def build(platform: str, version: str):
     if platform == "windows":
         archive_name = f"FAR_{platform}_{version}.zip"
         archive_path = dist_path / archive_name
-        subprocess.run(
-            ["zip", "-r", str(archive_path), exe_name],
-            check=True,
-            cwd=str(dist_path),
-        )
+        with zipfile.ZipFile(archive_path, 'w', zipfile.ZIP_DEFLATED) as zf:
+            zf.write(dist_path / exe_name, exe_name)
     else:
         archive_name = f"FAR_{platform}_{version}.tar.gz"
         archive_path = dist_path / archive_name
@@ -68,7 +66,8 @@ def build(platform: str, version: str):
             cwd=str(dist_path),
         )
 
-    print(f"Сборка готова: {archive_path}")
+    size_kb = archive_path.stat().st_size / 1024
+    print(f"[OK] Build: {archive_path} ({size_kb:.1f} KB)")
 
     # Добавить в сервис обновлений
     import asyncio
