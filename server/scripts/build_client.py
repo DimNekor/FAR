@@ -33,6 +33,12 @@ def build(platform: str, version: str):
         str(dist_path / "temp"),
         "--specpath",
         str(dist_path),
+        "--add-data",
+        f"{project_root / 'client' / 'kv'}:kv",
+        "--add-data",
+        f"{project_root / 'client' / 'static'}:static",
+        "--add-data",
+        f"{project_root / 'client' / 'config'}:config",
         str(project_root / "client" / "main.py"),
     ]
 
