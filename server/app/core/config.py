@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = (
         "postgresql+asyncpg://far_user:far_password@127.0.0.1:5432/far_db"
     )
-    API_KEY: str = "my_secret_key"
+    API_KEY: str = "233cc51050bb13ba5ac87110e1044b38379fbb3709f6c7955a16adb7f779eed3"
 
 
 settings = Settings()

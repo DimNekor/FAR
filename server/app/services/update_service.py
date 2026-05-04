@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 from pathlib import Path
 from datetime import datetime
 
@@ -7,7 +8,7 @@ from datetime import datetime
 class UpdateService:
     def __init__(self):
         self.builds_dir = (
-            Path(__file__).parent.parent.parent / "static" / "app" / "builds"
+            Path(__file__).parent.parent.parent / "builds"
         )
         self.metadata_file = self.builds_dir / "metadata.json"
         self.builds_dir.mkdir(parents=True, exist_ok=True)
@@ -32,7 +33,6 @@ class UpdateService:
                 "message": "Нет сборок для этой платформы",
             }
 
-        # Ищем последнюю версию
         latest_version = max(builds.keys())
 
         if latest_version > current_version:
@@ -64,10 +64,8 @@ class UpdateService:
         if platform not in metadata["builds"]:
             metadata["builds"][platform] = {}
 
-        # Копируем файл
-        dest = self.builds_dir / f"{platform}_{version}.tar.gz"
-        import shutil
-
+        ext = ".zip" if platform == "windows" else ".tar.gz"
+        dest = self.builds_dir / f"FAR_{platform}_{version}{ext}"
         shutil.copy(file_path, dest)
 
         metadata["builds"][platform][version] = {
