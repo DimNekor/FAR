@@ -28,6 +28,7 @@ class APIClient:
     # --- Health ---
     def check_health(self):
         try:
+            print(self._headers())
             resp = requests.get(
                 f"{self.base_url}/api/v1/health",
                 headers=self._headers(),

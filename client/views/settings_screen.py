@@ -665,7 +665,11 @@ class SettingsScreen(Screen):
                                 tar.extractall(extract_dir)
 
                         # Найти бинарник
-                        far_binary = extract_dir / "FAR"
+                        import platform as _platform
+                        if _platform.system() == "Windows":
+                            far_binary = extract_dir / "FAR.exe"
+                        else:
+                            far_binary = extract_dir / "FAR"
                         if not far_binary.exists():
                             raise FileNotFoundError("Бинарник FAR не найден в архиве")
 
