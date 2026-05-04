@@ -24,6 +24,9 @@ class FarApp(App):
 
 
 def main():
+    from client.version import __version__
+
+    print(f"RUNNING VERSION: {__version__}")
     FarApp().run()
 
 

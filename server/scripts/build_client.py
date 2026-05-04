@@ -10,18 +10,24 @@ def build(platform: str, version: str):
     dist_path = project_root / "builds"
     dist_path.mkdir(exist_ok=True)
 
-    # Определяем имя файла
-    if platform == "windows":
-        exe_name = "FAR.exe"
-    else:
-        exe_name = "FAR"
+    # Создать папки, если их нет (в .gitignore)
+    (project_root / "client" / "static" / "images").mkdir(parents=True, exist_ok=True)
+    (project_root / "client" / "config").mkdir(parents=True, exist_ok=True)
 
-    # Обновляем версию в client/version.py
+    config_file = project_root / "client" / "config" / "default_config.json"
+    if not config_file.exists():
+        config_file.write_text(
+            '{"server_url": "http://82.146.32.210", "api_key": "my_secret_key"}'
+        )
+
+    exe_name = "FAR.exe" if platform == "windows" else "FAR"
+
+    # Обновить версию
     version_file = project_root / "client" / "version.py"
     with open(version_file, "w") as f:
         f.write(f'__version__ = "{version}"\n')
 
-    # Запускаем PyInstaller
+    # PyInstaller
     cmd = [
         "pyinstaller",
         "--onefile",
@@ -44,19 +50,27 @@ def build(platform: str, version: str):
 
     subprocess.run(cmd, check=True, cwd=str(project_root))
 
-    # Упаковываем в tar.gz
-    archive_name = f"FAR_{platform}_{version}.tar.gz"
-    archive_path = dist_path / archive_name
-
-    subprocess.run(
-        ["tar", "-czf", str(archive_path), exe_name],
-        check=True,
-        cwd=str(dist_path),
-    )
+    # Упаковать
+    if platform == "windows":
+        archive_name = f"FAR_{platform}_{version}.zip"
+        archive_path = dist_path / archive_name
+        subprocess.run(
+            ["zip", "-r", str(archive_path), exe_name],
+            check=True,
+            cwd=str(dist_path),
+        )
+    else:
+        archive_name = f"FAR_{platform}_{version}.tar.gz"
+        archive_path = dist_path / archive_name
+        subprocess.run(
+            ["tar", "-czf", str(archive_path), exe_name],
+            check=True,
+            cwd=str(dist_path),
+        )
 
     print(f"Сборка готова: {archive_path}")
 
-    # Добавляем в сервис обновлений
+    # Добавить в сервис обновлений
     import asyncio
 
     sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -77,7 +91,6 @@ def build(platform: str, version: str):
 
 
 if __name__ == "__main__":
-    platform = sys.argv[1]  # linux, windows
-    version = sys.argv[2]  # 1.0.1
-
+    platform = sys.argv[1]
+    version = sys.argv[2]
     build(platform, version)

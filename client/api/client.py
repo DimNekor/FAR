@@ -1,7 +1,8 @@
-import asyncio
-import requests
-import aiohttp
 import sys
+import os
+import requests
+import asyncio
+import aiohttp
 from datetime import datetime
 from pathlib import Path
 from client.utils.config.config import config
@@ -11,16 +12,6 @@ class APIClient:
     def __init__(self):
         self.base_url = config.server_url.rstrip("/")
         self._session = None
-        self._loop = None
-
-    def _get_loop(self):
-        """Получить или создать event loop для потока"""
-        try:
-            return asyncio.get_running_loop()
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            return loop
 
     def _headers(self):
         return {"X-API-Key": config.api_key}
@@ -34,68 +25,98 @@ class APIClient:
             return "macos"
         return "unknown"
 
-    async def _get_session(self):
-        if self._session is None or self._session.closed:
-            timeout = aiohttp.ClientTimeout(total=10)
-            self._session = aiohttp.ClientSession(timeout=timeout)
-        return self._session
-
-    async def _check_health_async(self):
-        session = await self._get_session()
+    # --- Health ---
+    def check_health(self):
         try:
-            async with session.get(
-                f"{self.base_url}/api/v1/health", headers=self._headers()
-            ) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    return True, data.get("version", "unknown")
-                return False, f"HTTP {resp.status_code}"
-        except aiohttp.ClientConnectorError:
+            resp = requests.get(
+                f"{self.base_url}/api/v1/health",
+                headers=self._headers(),
+                timeout=5,
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                return True, data.get("version", "unknown")
+            return False, f"HTTP {resp.status_code}"
+        except requests.ConnectionError:
             return False, "Сервер недоступен"
-        except asyncio.TimeoutError:
+        except requests.Timeout:
             return False, "Таймаут соединения"
         except Exception as e:
             return False, f"Ошибка: {str(e)}"
 
-    def check_health(self):
-        """Синхронная обёртка — можно вызывать из любого потока"""
-        loop = self._get_loop()
-        return loop.run_until_complete(self._check_health_async())
+    # --- Updates ---
+    def check_updates(self, current_version: str) -> dict:
+        try:
+            resp = requests.get(
+                f"{self.base_url}/api/v1/updates/check",
+                params={
+                    "current_version": current_version,
+                    "platform": self._platform(),
+                },
+                headers=self._headers(),
+                timeout=5,
+            )
+            if resp.status_code == 200:
+                return resp.json()
+            return {"update_available": False, "message": f"HTTP {resp.status_code}"}
+        except Exception as e:
+            return {"update_available": False, "message": str(e)}
 
-    async def close(self):
-        if self._session and not self._session.closed:
-            await self._session.close()
+    def download_update(self, update_info: dict, progress_callback=None) -> str | None:
+        download_url = update_info.get("download_url")
+        if not download_url:
+            return None
 
-    # def check_health(self):
-    #     """Проверка доступности сервера"""
-    #     try:
-    #         resp = requests.get(
-    #             f"{self.base_url}/api/v1/health",
-    #             headers=self._headers(),
-    #             timeout=5,
-    #         )
-    #         print(f"DEBUG: Response status: {resp.status_code}")
-    #         if resp.status_code == 200:
-    #             data = resp.json()
-    #             return True, data.get("version", "unknown")
-    #         return False, f"HTTP {resp.status_code}"
-    #     except requests.ConnectionError:
-    #         print("DEBUG: Connection error")
-    #         return False, "Сервер недоступен"
-    #     except requests.Timeout:
-    #         print("DEBUG: Timeout")
-    #         return False, "Таймаут соединения"
-    #     except Exception as e:
-    #         print(f"DEBUG: Error: {e}")
-    #         return False, f"Ошибка: {str(e)}"
+        if getattr(sys, "frozen", False):
+            if sys.platform == "win32":
+                save_dir = Path(os.environ.get("APPDATA", ".")) / "FAR" / "updates"
+            elif sys.platform == "darwin":
+                save_dir = (
+                    Path.home() / "Library" / "Application Support" / "FAR" / "updates"
+                )
+            else:
+                save_dir = Path.home() / ".config" / "FAR" / "updates"
+        else:
+            save_dir = Path(__file__).parent.parent / "updates"
 
+        save_dir.mkdir(parents=True, exist_ok=True)
+
+        version = update_info.get("version", "unknown")
+        ext = ".zip" if self._platform() == "windows" else ".tar.gz"
+        filename = f"FAR_{self._platform()}_{version}{ext}"
+        filepath = save_dir / filename
+
+        try:
+            resp = requests.get(
+                f"{self.base_url}{download_url}",
+                headers=self._headers(),
+                stream=True,
+                timeout=300,
+            )
+            resp.raise_for_status()
+
+            total_size = int(resp.headers.get("content-length", 0))
+            downloaded = 0
+
+            with open(filepath, "wb") as f:
+                for chunk in resp.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+                        downloaded += len(chunk)
+                        if total_size > 0 and progress_callback:
+                            percent = int(downloaded / total_size * 100)
+                            progress_callback(percent)
+
+            return str(filepath)
+        except Exception as e:
+            print(f"Download error: {e}")
+            return None
+
+    # --- Sync DB ---
     def sync_database(self) -> dict:
-        """Отправить локальную БД на сервер и получить обновлённые данные."""
         from client.models.database import Database
 
         db = Database()
-
-        # Собираем локальные данные
         local_data = db.get_all_data_for_sync()
 
         try:
@@ -108,10 +129,7 @@ class APIClient:
             if resp.status_code == 200:
                 result = resp.json()
                 server_data = result.get("server_data", {})
-
-                # Сохраняем то, что пришло с сервера
                 save_result = db.save_synced_data(server_data)
-
                 return {
                     "success": True,
                     "sent_to_server": result.get("saved", {}),
@@ -124,15 +142,10 @@ class APIClient:
         except Exception as e:
             return {"success": False, "message": str(e)}
 
+    # --- Sync Images ---
     def sync_images(self) -> dict:
-        """
-        Синхронизация изображений с сервером.
-        """
-        from client.models.database import Database
-        import os
         from pathlib import Path
 
-        # Получаем список локальных файлов с датами
         images_dir = Path(__file__).parent.parent / "static" / "images"
         local_files = {}
 
@@ -147,7 +160,6 @@ class APIClient:
                     local_files[filepath.name] = mtime.isoformat()
 
         try:
-            # Шаг 1: Сравниваем списки
             resp = requests.post(
                 f"{self.base_url}/api/v1/sync-images/compare",
                 json=local_files,
@@ -164,7 +176,6 @@ class APIClient:
             downloaded = 0
             uploaded = 0
 
-            # Шаг 2: Скачиваем файлы, которых нет у клиента
             for filename in client_needs:
                 resp = requests.get(
                     f"{self.base_url}/api/v1/sync-images/download/{filename}",
@@ -177,7 +188,6 @@ class APIClient:
                         f.write(resp.content)
                     downloaded += 1
 
-            # Шаг 3: Загружаем файлы, которых нет у сервера
             for filename in server_needs:
                 filepath = images_dir / filename
                 if filepath.exists():
@@ -197,37 +207,8 @@ class APIClient:
                 "downloaded": downloaded,
                 "uploaded": uploaded,
             }
-
         except Exception as e:
             return {"success": False, "message": str(e)}
-
-    def _platform(self) -> str:
-        """Определить текущую платформу"""
-        if sys.platform.startswith("win"):
-            return "windows"
-        elif sys.platform.startswith("linux"):
-            return "linux"
-        elif sys.platform.startswith("darwin"):
-            return "macos"
-        return "unknown"
-
-    def check_updates(self, current_version: str) -> dict:
-        """Проверить обновления на сервере"""
-        try:
-            resp = requests.get(
-                f"{self.base_url}/api/v1/updates/check",
-                params={
-                    "current_version": current_version,
-                    "platform": self._platform(),
-                },
-                headers=self._headers(),
-                timeout=5,
-            )
-            if resp.status_code == 200:
-                return resp.json()
-            return {"update_available": False, "message": f"HTTP {resp.status_code}"}
-        except Exception as e:
-            return {"update_available": False, "message": str(e)}
 
 
 api_client = APIClient()

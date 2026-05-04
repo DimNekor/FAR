@@ -1,4 +1,4 @@
-# client/desktop/views/settings_screen.py
+from client.version import __version__
 
 from kivy.uix.screenmanager import Screen
 from kivy.uix.boxlayout import BoxLayout
@@ -29,6 +29,7 @@ load_view_kv("settings.kv")
 
 
 class SettingsScreen(Screen):
+    current_version = StringProperty(__version__)
     main_layout = ObjectProperty(None)
     connection_status_text = StringProperty("Проверка...")
 
@@ -63,6 +64,7 @@ class SettingsScreen(Screen):
 
     def on_enter(self):
         """Вызывается при входе на экран"""
+        self._checking = False
         if not self._checking:
             self._check_connection()
 
@@ -560,7 +562,7 @@ class SettingsScreen(Screen):
 
     def go_to_menu(self):
         """Возврат в главное меню"""
-        self.api.close()  # Закрываем сессию API
+        # self.api.close()  # Закрываем сессию API
         if self.manager:
             self.manager.current = "menu"
 
@@ -583,3 +585,130 @@ class SettingsScreen(Screen):
             Clock.schedule_once(show, 0)
 
         threading.Thread(target=do_sync, daemon=True).start()
+
+    def _perform_update(self, update_info):
+        """Выполнение обновления"""
+        import zipfile
+        import tarfile
+        import shutil
+        import platform as _platform
+
+        content = BoxLayout(orientation="vertical", spacing=15, padding=20)
+
+        status_label = Label(
+            text="Загрузка обновления...",
+            font_size=16,
+            size_hint=(1, 0.3),
+            color=(0.2, 0.2, 0.5, 1),
+        )
+        content.add_widget(status_label)
+
+        progress = ProgressBar(max=100, size_hint=(1, 0.1))
+        content.add_widget(progress)
+
+        detail_label = Label(
+            text="0%", font_size=14, size_hint=(1, 0.4), color=(0.3, 0.3, 0.3, 1)
+        )
+        content.add_widget(detail_label)
+
+        close_btn = Button(
+            text="Отмена", size_hint=(1, 0.2), background_color=(0.7, 0.3, 0.3, 1)
+        )
+        content.add_widget(close_btn)
+
+        popup = Popup(
+            title="Обновление",
+            content=content,
+            size_hint=(0.7, 0.5),
+            auto_dismiss=False,
+        )
+
+        cancel_flag = {"cancel": False}
+
+        def on_cancel(instance):
+            cancel_flag["cancel"] = True
+            popup.dismiss()
+
+        def on_restart(instance):
+            sys.exit(0)
+
+        close_btn.bind(on_release=on_cancel)
+
+        def update():
+            def progress_callback(percent):
+                if not cancel_flag["cancel"]:
+                    Clock.schedule_once(
+                        lambda dt, p=percent: setattr(progress, "value", p), 0
+                    )
+                    Clock.schedule_once(
+                        lambda dt, p=percent: setattr(
+                            detail_label, "text", f"Загружено {p}%"
+                        ),
+                        0,
+                    )
+
+            filepath = self.api.download_update(update_info, progress_callback)
+
+            def finish_update(dt, filepath=filepath):
+                if filepath and not cancel_flag["cancel"]:
+                    filepath = Path(filepath)
+                    extract_dir = filepath.parent / "extracted"
+                    extract_dir.mkdir(exist_ok=True)
+
+                    try:
+                        # Распаковать
+                        if filepath.suffix == ".zip":
+                            with zipfile.ZipFile(filepath, "r") as zf:
+                                zf.extractall(extract_dir)
+                        else:
+                            with tarfile.open(filepath, "r:gz") as tar:
+                                tar.extractall(extract_dir)
+
+                        # Найти бинарник
+                        far_binary = extract_dir / "FAR"
+                        if not far_binary.exists():
+                            raise FileNotFoundError("Бинарник FAR не найден в архиве")
+
+                        # Текущий файл
+                        if getattr(sys, "frozen", False):
+                            current_exe = Path(sys.executable)
+                        else:
+                            current_exe = Path(sys.argv[0]).absolute()
+
+                        if _platform.system() == "Windows":
+                            old = current_exe.with_suffix(".old")
+                            if old.exists():
+                                old.unlink()
+                            os.rename(current_exe, old)
+                            shutil.copy2(far_binary, current_exe)
+                        else:
+                            new_exe = current_exe.with_name("FAR_new")
+                            shutil.copy2(far_binary, new_exe)
+                            os.chmod(new_exe, 0o755)
+
+                            old_exe = current_exe.with_name("FAR_old")
+                            if old_exe.exists():
+                                old_exe.unlink()
+                            os.rename(current_exe, old_exe)
+                            os.rename(new_exe, current_exe)
+
+                        status_label.text = "Обновление установлено!"
+                        detail_label.text = "Перезапустите приложение"
+                        close_btn.text = "Выйти"
+                        close_btn.background_color = (0.2, 0.7, 0.3, 1)
+                        close_btn.unbind(on_release=on_cancel)
+                        close_btn.bind(on_release=on_restart)
+
+                    except Exception as e:
+                        status_label.text = "Ошибка установки"
+                        detail_label.text = str(e)
+                        close_btn.background_color = (0.8, 0.3, 0.3, 1)
+                else:
+                    if not cancel_flag["cancel"]:
+                        status_label.text = "Ошибка загрузки"
+                        detail_label.text = "Не удалось загрузить обновление"
+
+            Clock.schedule_once(finish_update, 0)
+
+        popup.open()
+        threading.Thread(target=update, daemon=True).start()
