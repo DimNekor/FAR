@@ -5,7 +5,7 @@ from fastapi import Depends
 
 from server.app.core.config import settings
 from server.app.core.database import engine, Base
-from server.app.api.v1.endpoints import health, sync, sync_images
+from server.app.api.v1.endpoints import health, sync, sync_images, updates
 from server.app.core.security import verify_api_key
 
 import server.app.models
@@ -43,6 +43,7 @@ app.add_middleware(
 app.include_router(health.router, prefix="/api/v1", tags=["health"])
 app.include_router(sync.router, prefix="/api/v1", tags=["sync"])
 app.include_router(sync_images.router, prefix="/api/v1", tags=["sync-images"])
+app.include_router(updates.router, prefix="/api/v1", tags=["updates"])
 
 
 @app.get("/")

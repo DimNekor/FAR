@@ -2,6 +2,8 @@ import asyncio
 import requests
 import aiohttp
 from datetime import datetime
+import sys
+
 from client.utils.config.config import config
 
 
@@ -182,6 +184,34 @@ class APIClient:
 
         except Exception as e:
             return {"success": False, "message": str(e)}
+
+    def _platform(self) -> str:
+        """Определить текущую платформу"""
+        if sys.platform.startswith("win"):
+            return "windows"
+        elif sys.platform.startswith("linux"):
+            return "linux"
+        elif sys.platform.startswith("darwin"):
+            return "macos"
+        return "unknown"
+
+    def check_updates(self, current_version: str) -> dict:
+        """Проверить обновления на сервере"""
+        try:
+            resp = requests.get(
+                f"{self.base_url}/api/v1/updates/check",
+                params={
+                    "current_version": current_version,
+                    "platform": self._platform(),
+                },
+                headers=self._headers(),
+                timeout=5,
+            )
+            if resp.status_code == 200:
+                return resp.json()
+            return {"update_available": False, "message": f"HTTP {resp.status_code}"}
+        except Exception as e:
+            return {"update_available": False, "message": str(e)}
 
 
 api_client = APIClient()

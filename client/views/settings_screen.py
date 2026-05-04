@@ -161,25 +161,28 @@ class SettingsScreen(Screen):
                 lambda dt: setattr(info_label, "text", "Сравнение версий..."), 0.5
             )
 
-            update_info = self.api.check_updates()
+            from client.version import __version__
+
+            update_info = self.api.check_updates(__version__)
 
             # Шаг 3: Результат
             def show_result(dt):
                 progress.value = 100
 
-                if update_info:
+                if update_info and update_info.get("update_available"):
                     status_label.text = "Доступно обновление!"
                     info_label.text = (
-                        f"Версия: {update_info.version}\n"
-                        f"Дата: {update_info.release_date}\n"
-                        f"Размер: {update_info.file_size // 1024} KB\n\n"
-                        f"Изменения:\n{update_info.changelog[:200]}"
+                        f"Версия: {update_info.get('version')}\n"
+                        f"Размер: {update_info.get('file_size', 0) // 1024} KB\n\n"
+                        f"Изменения:\n{update_info.get('changelog', '')[:200]}"
                     )
                     update_btn.disabled = False
                     update_info_holder["update"] = update_info
                 else:
                     status_label.text = "Обновлений нет"
-                    info_label.text = "У вас последняя версия приложения"
+                    info_label.text = update_info.get(
+                        "message", "У вас последняя версия приложения"
+                    )
                     close_btn.text = "OK"
 
             Clock.schedule_once(show_result, 1.0)
