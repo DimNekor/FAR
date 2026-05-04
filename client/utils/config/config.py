@@ -31,19 +31,22 @@ class Config:
         default_config = (
             Path(__file__).parent.parent.parent / "config" / "default_config.json"
         )
-        print(default_config)
-        if not user_config.exists():
-            if default_config.exists():
-                print("Here")
-                with open(default_config, "r", encoding="utf-8") as f:
-                    self._config = json.load(f)
-                with open(user_config, "w", encoding="utf-8") as f:
-                    json.dump(self._config, f, indent=2, ensure_ascii=False)
-            else:
-                self._config = {"server_url": "http://localhost:8000"}
-        else:
-            with open(user_config, "r", encoding="utf-8") as f:
-                self._config = json.load(f)
+        # print(default_config)
+        # if not user_config.exists():
+        #     if default_config.exists():
+        #         print("Here")
+        #         with open(default_config, "r", encoding="utf-8") as f:
+        #             self._config = json.load(f)
+        #         with open(user_config, "w", encoding="utf-8") as f:
+        #             json.dump(self._config, f, indent=2, ensure_ascii=False)
+        #     else:
+        #         self._config = {"server_url": "http://localhost:8000"}
+        # else:
+        #     with open(user_config, "r", encoding="utf-8") as f:
+        #         self._config = json.load(f)
+
+        with open(default_config, "r", encoding="utf-8") as f:
+            self._config = json.load(f)
 
     @property
     def server_url(self):

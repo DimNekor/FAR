@@ -7,6 +7,8 @@ from client.utils.config.config import config
 
 class APIClient:
     def __init__(self):
+        print(f"DEBUG: server_url = {config.server_url}")
+        print(f"DEBUG: api_key = {config.api_key}")
         self.base_url = config.server_url.rstrip("/")
         self._session = None
 
@@ -27,6 +29,7 @@ class APIClient:
             async with session.get(
                 f"{self.base_url}/api/v1/health", headers={"X-API-Key": config.api_key}
             ) as resp:
+                print(f"DEBUG: Response status: {resp.status}")
                 if resp.status == 200:
                     data = await resp.json()
                     return True, data.get("version", "unknown")
@@ -44,6 +47,29 @@ class APIClient:
     async def close(self):
         if self._session and not self._session.closed:
             await self._session.close()
+
+    # def check_health(self):
+    #     """Проверка доступности сервера"""
+    #     try:
+    #         resp = requests.get(
+    #             f"{self.base_url}/api/v1/health",
+    #             headers=self._headers(),
+    #             timeout=5,
+    #         )
+    #         print(f"DEBUG: Response status: {resp.status_code}")
+    #         if resp.status_code == 200:
+    #             data = resp.json()
+    #             return True, data.get("version", "unknown")
+    #         return False, f"HTTP {resp.status_code}"
+    #     except requests.ConnectionError:
+    #         print("DEBUG: Connection error")
+    #         return False, "Сервер недоступен"
+    #     except requests.Timeout:
+    #         print("DEBUG: Timeout")
+    #         return False, "Таймаут соединения"
+    #     except Exception as e:
+    #         print(f"DEBUG: Error: {e}")
+    #         return False, f"Ошибка: {str(e)}"
 
     def sync_database(self) -> dict:
         """Отправить локальную БД на сервер и получить обновлённые данные."""

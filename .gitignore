@@ -6,3 +6,4 @@ __pycache__/
 *.egg
 backup_results/
 research_data.db
+client/config/*
