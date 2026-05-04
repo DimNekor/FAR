@@ -2,11 +2,25 @@ import sqlite3
 import uuid
 from datetime import datetime
 from pathlib import Path
+import sys
 
 
 class Database:
     def __init__(self):
-        self.db_dir = Path(__file__).parent
+        # В собранном приложении — хранить БД в папке пользователя
+        if getattr(sys, "frozen", False):
+            app_name = "FAR"
+            if sys.platform == "win32":
+                base = Path(os.environ.get("APPDATA", "."))
+            elif sys.platform == "darwin":
+                base = Path.home() / "Library" / "Application Support"
+            else:
+                base = Path.home() / ".config"
+            self.db_dir = base / app_name
+        else:
+            self.db_dir = Path(__file__).parent
+
+        self.db_dir.mkdir(parents=True, exist_ok=True)
         self.db_path = self.db_dir / "research_data.db"
         self.conn = sqlite3.connect(str(self.db_path))
         self.conn.row_factory = sqlite3.Row

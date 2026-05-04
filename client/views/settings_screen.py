@@ -37,8 +37,25 @@ class SettingsScreen(Screen):
 
         self.api = APIClient()
 
-        self.db_path = Path(__file__).parent / "research_data.db"
-        self.backup_dir = Path(__file__).parent.parent / "backups"
+        if getattr(sys, "frozen", False):
+            if sys.platform == "win32":
+                base = Path(os.environ.get("APPDATA", "."))
+            else:
+                base = Path.home() / ".config"
+            self.db_path = base / "FAR" / "research_data.db"
+        else:
+            self.db_path = Path(__file__).parent / "research_data.db"
+
+        if getattr(sys, "frozen", False):
+            if sys.platform == "win32":
+                base = Path(os.environ.get("APPDATA", "."))
+            elif sys.platform == "darwin":
+                base = Path.home() / "Library" / "Application Support"
+            else:
+                base = Path.home() / ".config"
+            self.backup_dir = base / "FAR" / "backups"
+        else:
+            self.backup_dir = Path(__file__).parent.parent / "backups"
 
         self.backup_dir.mkdir(exist_ok=True)
 

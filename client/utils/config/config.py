@@ -23,30 +23,35 @@ class Config:
         else:
             return Path(__file__).parent
 
+    def _get_default_config_path(self):
+        """Путь к default_config.json"""
+        if getattr(sys, "frozen", False):
+            # В собранном приложении — рядом с бинарником в папке config/
+            return Path(sys._MEIPASS) / "config" / "default_config.json"
+        else:
+            # При разработке
+            return (
+                Path(__file__).parent.parent.parent / "config" / "default_config.json"
+            )
+
     def _load(self):
         config_dir = self._get_config_dir()
         config_dir.mkdir(parents=True, exist_ok=True)
 
         user_config = config_dir / "config.json"
-        default_config = (
-            Path(__file__).parent.parent.parent / "config" / "default_config.json"
-        )
-        # print(default_config)
-        # if not user_config.exists():
-        #     if default_config.exists():
-        #         print("Here")
-        #         with open(default_config, "r", encoding="utf-8") as f:
-        #             self._config = json.load(f)
-        #         with open(user_config, "w", encoding="utf-8") as f:
-        #             json.dump(self._config, f, indent=2, ensure_ascii=False)
-        #     else:
-        #         self._config = {"server_url": "http://localhost:8000"}
-        # else:
-        #     with open(user_config, "r", encoding="utf-8") as f:
-        #         self._config = json.load(f)
+        default_config = self._get_default_config_path()
 
-        with open(default_config, "r", encoding="utf-8") as f:
-            self._config = json.load(f)
+        if not user_config.exists():
+            if default_config.exists():
+                with open(default_config, "r", encoding="utf-8") as f:
+                    self._config = json.load(f)
+                with open(user_config, "w", encoding="utf-8") as f:
+                    json.dump(self._config, f, indent=2, ensure_ascii=False)
+            else:
+                self._config = {"server_url": "http://localhost:8000"}
+        else:
+            with open(user_config, "r", encoding="utf-8") as f:
+                self._config = json.load(f)
 
     @property
     def server_url(self):
