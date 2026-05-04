@@ -7,3 +7,4 @@ __pycache__/
 backup_results/
 research_data.db
 client/config/*
+FAR.spec
