@@ -145,8 +145,18 @@ class APIClient:
     # --- Sync Images ---
     def sync_images(self) -> dict:
         from pathlib import Path
-
-        images_dir = Path(__file__).parent.parent / "static" / "images"
+        
+        if getattr(sys, 'frozen', False):
+            if sys.platform == "win32":
+                base = Path(os.environ.get("APPDATA", ".")) / "FAR"
+            else:
+                base = Path.home() / ".config" / "FAR"
+            images_dir = base / "images"
+        else:
+            images_dir = Path(__file__).parent.parent / "static" / "images"
+        
+        images_dir.mkdir(parents=True, exist_ok=True)
+    
         local_files = {}
 
         if images_dir.exists():

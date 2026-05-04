@@ -13,6 +13,8 @@ import random
 import os
 import json
 import time
+import sys
+from pathlib import Path
 
 from client.views import load_view_kv
 from client.models.database import Database
@@ -44,8 +46,16 @@ class SurveyScreen(Screen):
         self._load_images()
         self._show_id_input()
 
-    def _load_images(self):
-        image_dir = "client/static/images/"
+    def _load_images(self):        
+        if getattr(sys, 'frozen', False):
+            if sys.platform == "win32":
+                base = Path(os.environ.get("APPDATA", ".")) / "FAR"
+            else:
+                base = Path.home() / ".config" / "FAR"
+            image_dir = str(base / "images")
+        else:
+            image_dir = "static/images/"
+        
         self.images = []
 
         real_images = []
