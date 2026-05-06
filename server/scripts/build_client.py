@@ -2,10 +2,11 @@ import subprocess
 import sys
 from pathlib import Path
 import zipfile
-
+import os
 
 def build(platform: str, version: str):
     """Собрать клиент и добавить в обновления"""
+    sep = ";" if os.name == "nt" else ":"
 
     project_root = Path(__file__).parent.parent.parent  # ~/FAR
     dist_path = project_root / "builds"
@@ -18,7 +19,7 @@ def build(platform: str, version: str):
     config_file = project_root / "client" / "config" / "default_config.json"
     if not config_file.exists():
         config_file.write_text(
-            '{"server_url": "http://82.146.32.210", "api_key": "my_secret_key"}'
+        '{"server_url": "localhost", "api_key": "my_secret_key"}'
         )
 
     exe_name = "FAR.exe" if platform == "windows" else "FAR"
@@ -46,6 +47,7 @@ def build(platform: str, version: str):
         f"{project_root / 'client' / 'static'}:static",
         "--add-data",
         f"{project_root / 'client' / 'config'}:config",
+        "--hidden-import", "win32timezone",
         str(project_root / "client" / "main.py"),
     ]
 

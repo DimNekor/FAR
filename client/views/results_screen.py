@@ -46,6 +46,9 @@ class ResultsScreen(Screen):
         # Получаем данные из БД
         results = self.db.get_all_results()
 
+        print(f"DEBUG: Found {len(results)} results in DB")
+        print(f"DEBUG: DB path: {self.db.db_path}")
+        
         if not results:
             no_data_label = Label(
                 text="Нет данных для отображения\n\nПроведите несколько тестов, чтобы увидеть результаты",

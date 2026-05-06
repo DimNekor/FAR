@@ -45,6 +45,18 @@ class SurveyScreen(Screen):
 
         self._load_images()
         self._show_id_input()
+    
+    def on_enter(self):
+        self.state = "id_input"
+        self.participant_id = ""
+        self.user_id = None
+        self.session_id = None
+        self.images = []
+        self.current_image_index = 0
+        self.results = []
+        self._clear_layout()
+        self._load_images()
+        self._show_id_input()
 
     def _load_images(self):        
         if getattr(sys, 'frozen', False):
@@ -605,14 +617,8 @@ class SurveyScreen(Screen):
             "responses": self.results,
         }
 
-        if getattr(sys, 'frozen', False):
-            if sys.platform == "win32":
-                backup_dir = Path(os.environ.get("APPDATA", ".")) / "FAR" / "backup_results"
-            else:
-                backup_dir = Path.home() / ".config" / "FAR" / "backup_results"
-        else:
-            backup_dir = Path("backup_results")
-        
+        backup_dir = Path(os.environ.get("APPDATA", ".")) / "FAR" / "backup_results"
+        print(backup_dir)
         backup_dir.mkdir(parents=True, exist_ok=True)
 
         filename = f"results_{self.participant_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
