@@ -10,4 +10,5 @@ research_data.db
 client/config/*
 FAR.spec
 build/*
-
+installer/*
+setup.iss
