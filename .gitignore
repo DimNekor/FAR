@@ -12,3 +12,4 @@ FAR.spec
 build/*
 installer/*
 setup.iss
+psycho.ico

@@ -605,15 +605,22 @@ class SurveyScreen(Screen):
             "responses": self.results,
         }
 
-        backup_dir = "backup_results/"
-        if not os.path.exists(backup_dir):
-            os.makedirs(backup_dir)
+        if getattr(sys, 'frozen', False):
+            if sys.platform == "win32":
+                backup_dir = Path(os.environ.get("APPDATA", ".")) / "FAR" / "backup_results"
+            else:
+                backup_dir = Path.home() / ".config" / "FAR" / "backup_results"
+        else:
+            backup_dir = Path("backup_results")
+        
+        backup_dir.mkdir(parents=True, exist_ok=True)
 
-        filename = f"{backup_dir}results_{self.participant_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-        with open(filename, "w") as f:
+        filename = f"results_{self.participant_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        filepath = backup_dir / filename
+        with open(filepath, "w") as f:
             json.dump(results, f, indent=2)
 
-        print(f"Резервная копия сохранена в {filename}")
+        print(f"Резервная копия сохранена в {filepath}")
 
     def _go_to_menu(self, dt):
         if self.manager:
